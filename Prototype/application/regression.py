@@ -37,9 +37,9 @@ def make_baths_count(row):
         if row != 'nan':
             return float(row)
         else:
-            return 0
+            return 1
     except:
-        return 0
+        return 1
 
 def make_beds_count(row):
     row = str(row)
@@ -302,12 +302,63 @@ def make_data_4_predict(stroka, states_list,mean_target):
     data['price_sqft'] = data['price']*data['sqft']
     data['price_lot']=data['price']*data['lot']
     
-    columns = ['new_id', 'Remodeled', 'mean_dist', '9', 'schools_count', 'min_dist',
-       'prop_type', '7', 'beds_square', 'Parking', 'sqft', 'zipcode_int', '6',
-       '5', 'Cooling', 'beds_count', 'pool', 'lot', 'state_encoding',
-       'baths_count', 'K', 'average_rate_school', 'city_hash', 'max_dist',
-       'street_hash', 'price_sqft', 'stories_count', 'Year', 'PK', 'price_lot',
-       '12', 'max_rate', 'address_hash', 'price', 'state_mean', '8']
+    data['sqft_lot'] = data['sqft']+data['lot']
+    
+    columns = ['8', 'max_rate', 'PK', 'prop_type', 'address_hash', 'beds_square',
+       'stories_count', 'K', 'Parking', 'Year', 'pool', '6', 'new_id',
+       'beds_count', 'Remodeled', '1', 'state_mean', 'city_hash', '12',
+       'zipcode_int', 'Cooling', 'max_dist', 'street_hash', 'schools_count',
+       '11', 'lot', 'sqft', 'fireplace_y_n', 'sqft_lot', 'average_rate_school',
+       'mean_dist', 'min_dist', 'baths_count', 'state_encoding']
     result = data[columns]
     
     return result
+
+def make_full_data(stroka, mean_target):
+
+    mean_lotsize = 0
+    
+    #первым делом проверяем, есть ли штат
+    if 'state' in stroka.keys():
+        if 'homeFacts' in stroka.keys():
+            #проверяем, есть ли цена за кв. фут
+            s = eval(stroka['homeFacts'])['atAGlanceFacts']
+            for k in s:
+                if k['factLabel'] == 'Price/sqft':
+                    mean_price =k['factValue'] 
+        else: #штат есть, но цены нет
+            if stroka['state'] in mean_target.index:
+                mean_price = mean_target.get([stroka['state']], 0).iloc[0]
+            else:
+                mean_price = 0
+    else: #даже штата нет
+        mean_price = mean_target.get('FL', 0)
+    
+    #некоторое начальное значение словаря
+    dict_init = {
+        'status': 'for sale', #статус нам неизвестен
+        'private pool': 'NaN', #наиболее часто встречающееся
+        'propertyType': 'single family home', #наиболее часто встречающееся
+        'street':'NaN', #NaN
+        'baths':'2.0', #наиболее часто встречающееся
+        #наиболее часто встречающееся, но! если знаем штат и город, то лучше среднее по этим параметрам
+        #кроме того, если не указана цена за кв. фут, то лучше ее заменить на среднее по штату
+        'homeFacts': "{'atAGlanceFacts': [{'factValue': '0', 'factLabel': 'Year built'}, {'factValue': '0', 'factLabel': 'Remodeled year'}, {'factValue': 'NaN', 'factLabel': 'Heating'}, {'factValue': '0', 'factLabel': 'Cooling'}, {'factValue': 'No Data', 'factLabel': 'Parking'}, {'factValue': '"+str(mean_lotsize)+"', 'factLabel': 'lotsize'}, {'factValue': '"+str(mean_price)+"', 'factLabel': 'Price/sqft'}]}",
+        'fireplace':'Yes', #наиболее часто встречающееся
+        'city':'NaN', #неизвестен
+        'schools':"[{'rating': [], 'data': {'Distance': [], 'Grades': []}, 'name': []}]", #по нулям
+        'sqft':'2579.4076128911624', #среднее 
+        'zipcode':'32137', #nan
+        'beds':'3', #наиболее часто встречающееся
+        'state':'FL', #наиболее часто встречающееся
+        'stories':'1', #наиболее чаsсто встречающееся
+        'mls-id':'NaN',
+        'PrivatePool':'NaN', #наиболее часто встречающееся
+        'MlsId':'NaN',
+        'target':'NaN'
+        }
+    
+    for i in stroka.keys():
+        dict_init[i] = stroka[i]
+    
+    return dict_init
